@@ -11,6 +11,7 @@ const DesignAgentStudio = dynamic(() => import('studio').then(mod => mod.DesignA
 });
 import axios from 'axios';
 import ApiKeyModal from './ApiKeyModal';
+import ReplicateVideoStudio from './ReplicateVideoStudio';
 import { getCommonCopy, getLocaleConfig, localizeStudioPath } from '@/lib/locales';
 
 // Tab/category ids, icons, and English `label` fallbacks are stable
@@ -343,6 +344,9 @@ export default function StandaloneShell({ locale = 'en' }) {
   
   const [apiKey, setApiKey] = useState(null);
   const [activeTab, setActiveTab] = useState(getInitialTab());
+  // Provider preference is not sensitive; Replicate credentials stay in React memory.
+  const [videoProvider, setVideoProvider] = useState('muapi');
+  const [replicateApiToken, setReplicateApiToken] = useState('');
 
   const [balance, setBalance] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -575,6 +579,22 @@ export default function StandaloneShell({ locale = 'en' }) {
   }, [activeTab]);
 
   useEffect(() => {
+    const savedProvider = localStorage.getItem('open_gen_video_provider_v1');
+    if (savedProvider === 'replicate') {
+      setVideoProvider('replicate');
+      // Replicate video can be used without a MuAPI key.
+      if (!localStorage.getItem(STORAGE_KEY)) setActiveTab('video');
+    }
+  }, []);
+
+  const chooseVideoProvider = useCallback((provider) => {
+    if (provider !== 'muapi' && provider !== 'replicate') return;
+    setVideoProvider(provider);
+    localStorage.setItem('open_gen_video_provider_v1', provider);
+    setActiveTab('video');
+  }, []);
+
+  useEffect(() => {
     setHasMounted(true);
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
@@ -675,8 +695,14 @@ export default function StandaloneShell({ locale = 'en' }) {
     </div>
   );
 
-  if (!apiKey) {
-    return <ApiKeyModal onSave={handleKeySave} locale={locale} />;
+  if (!apiKey && (videoProvider !== 'replicate' || activeTab !== 'video')) {
+    return (
+      <ApiKeyModal
+        onSave={handleKeySave}
+        onUseReplicate={() => chooseVideoProvider('replicate')}
+        locale={locale}
+      />
+    );
   }
 
   return (
@@ -975,15 +1001,46 @@ export default function StandaloneShell({ locale = 'en' }) {
 
         {/* Studio Content */}
         <div className="flex-1 min-h-0 h-full relative overflow-hidden bg-[#030303]">
+        {apiKey && (
+          <>
         <div className={activeTab === 'image' ? "h-full w-full" : "hidden"}>
           <ImageStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('image')} onGenerationEnd={makeGenerationEndCallback('image')} onGenerationComplete={makeSuccessCallback('image')} onGenerationError={makeErrorCallback('image')} />
         </div>
         <div className={activeTab === 'layers' ? "h-full w-full" : "hidden"}>
           <LayersStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('layers')} onGenerationEnd={makeGenerationEndCallback('layers')} onGenerationComplete={makeSuccessCallback('layers')} onGenerationError={makeErrorCallback('layers')} />
         </div>
-        <div className={activeTab === 'video' ? "h-full w-full" : "hidden"}>
-          <VideoStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('video')} onGenerationEnd={makeGenerationEndCallback('video')} onGenerationComplete={makeSuccessCallback('video')} onGenerationError={makeErrorCallback('video')} />
+          </>
+        )}
+        <div className={activeTab === 'video' ? "h-full w-full flex flex-col" : "hidden"}>
+          <div className="flex-shrink-0 flex flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-[#111] px-4 py-2">
+            <label htmlFor="video-provider" className="text-sm text-white/70">AI video provider</label>
+            <select
+              id="video-provider"
+              value={videoProvider}
+              onChange={(e) => chooseVideoProvider(e.target.value)}
+              className="rounded-md border border-white/15 bg-[#222] px-3 py-2 text-sm text-white"
+            >
+              <option value="muapi">MuAPI (existing studio)</option>
+              <option value="replicate">Replicate (Wan 2.2 Fast)</option>
+            </select>
+          </div>
+          <div className="flex-1 min-h-0">
+            {videoProvider === 'replicate' ? (
+              <ReplicateVideoStudio
+                apiToken={replicateApiToken}
+                onTokenChange={setReplicateApiToken}
+                onGenerationStart={makeGenerationStartCallback('video')}
+                onGenerationEnd={makeGenerationEndCallback('video')}
+                onGenerationComplete={makeSuccessCallback('video')}
+                onGenerationError={makeErrorCallback('video')}
+              />
+            ) : (
+              <VideoStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('video')} onGenerationEnd={makeGenerationEndCallback('video')} onGenerationComplete={makeSuccessCallback('video')} onGenerationError={makeErrorCallback('video')} />
+            )}
+          </div>
         </div>
+        {apiKey && (
+          <>
         <div className={activeTab === 'clipping' ? "h-full w-full" : "hidden"}>
           <ClippingStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('clipping')} onGenerationEnd={makeGenerationEndCallback('clipping')} onGenerationComplete={makeSuccessCallback('clipping')} onGenerationError={makeErrorCallback('clipping')} />
         </div>
@@ -1048,6 +1105,8 @@ export default function StandaloneShell({ locale = 'en' }) {
             onGenerationError={makeErrorCallback('ai-influencer')}
           />
         </div>
+          </>
+        )}
       </div>
     </div>
 
@@ -1187,7 +1246,7 @@ export default function StandaloneShell({ locale = 'en' }) {
                    {copy.settingsModal.activeApiKey}
                 </label>
                 <div className="text-[13px] font-mono text-white/80">
-                  {apiKey.slice(0, 8)}••••••••••••••••
+                  {apiKey ? `${apiKey.slice(0, 8)}••••••••••••••••` : 'MuAPI not connected (Replicate-only mode)'}
                 </div>
               </div>
             </div>
