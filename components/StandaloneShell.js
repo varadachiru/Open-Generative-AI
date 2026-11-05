@@ -1001,12 +1001,16 @@ export default function StandaloneShell({ locale = 'en' }) {
 
         {/* Studio Content */}
         <div className="flex-1 min-h-0 h-full relative overflow-hidden bg-[#030303]">
+        {apiKey && (
+          <>
         <div className={activeTab === 'image' ? "h-full w-full" : "hidden"}>
           <ImageStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('image')} onGenerationEnd={makeGenerationEndCallback('image')} onGenerationComplete={makeSuccessCallback('image')} onGenerationError={makeErrorCallback('image')} />
         </div>
         <div className={activeTab === 'layers' ? "h-full w-full" : "hidden"}>
           <LayersStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('layers')} onGenerationEnd={makeGenerationEndCallback('layers')} onGenerationComplete={makeSuccessCallback('layers')} onGenerationError={makeErrorCallback('layers')} />
         </div>
+          </>
+        )}
         <div className={activeTab === 'video' ? "h-full w-full flex flex-col" : "hidden"}>
           <div className="flex-shrink-0 flex flex-wrap items-center justify-between gap-2 border-b border-white/10 bg-[#111] px-4 py-2">
             <label htmlFor="video-provider" className="text-sm text-white/70">AI video provider</label>
@@ -1035,6 +1039,8 @@ export default function StandaloneShell({ locale = 'en' }) {
             )}
           </div>
         </div>
+        {apiKey && (
+          <>
         <div className={activeTab === 'clipping' ? "h-full w-full" : "hidden"}>
           <ClippingStudio apiKey={apiKey} locale={locale} droppedFiles={droppedFiles} onFilesHandled={handleFilesHandled} onGenerationStart={makeGenerationStartCallback('clipping')} onGenerationEnd={makeGenerationEndCallback('clipping')} onGenerationComplete={makeSuccessCallback('clipping')} onGenerationError={makeErrorCallback('clipping')} />
         </div>
@@ -1099,6 +1105,8 @@ export default function StandaloneShell({ locale = 'en' }) {
             onGenerationError={makeErrorCallback('ai-influencer')}
           />
         </div>
+          </>
+        )}
       </div>
     </div>
 
