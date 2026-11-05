@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { getCommonCopy } from '@/lib/locales';
 
-export default function ApiKeyModal({ onSave, onClose, overlay = false, title, subtitle, locale = 'en' }) {
+export default function ApiKeyModal({ onSave, onClose, onUseReplicate, overlay = false, title, subtitle, locale = 'en' }) {
   const [key, setKey] = useState('');
   const [error, setError] = useState('');
   const copy = getCommonCopy(locale).apiKeyModal;
@@ -74,6 +74,15 @@ export default function ApiKeyModal({ onSave, onClose, overlay = false, title, s
             {copy.submit}
           </button>
 
+          {onUseReplicate && (
+            <button
+              type="button"
+              onClick={onUseReplicate}
+              className="w-full rounded-md border border-white/15 bg-white/5 px-4 py-3 text-sm font-semibold text-white hover:bg-white/10"
+            >
+              Try Replicate video without a MuAPI key
+            </button>
+          )}
           <p className="text-center text-[12px] text-white/20 pt-2">
             {copy.needKey}{' '}
             <a href="https://muapi.ai/access-keys" target="_blank" rel="noreferrer" className="text-white/40 hover:text-[#22d3ee] transition-colors font-medium">
